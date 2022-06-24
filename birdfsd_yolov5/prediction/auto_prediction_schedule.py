@@ -48,7 +48,7 @@ def auto_prediction_pipeline(opts_file: Optional[str] = None,
     else:
         logger.debug('Using default options...')
         OPTS = {
-            'weights': '',
+            'weights': 'https://github.com/microsoft/CameraTraps/releases/download/v5.0/md_v5a.0.0.pt',
             'project_ids': None,  # None will return all projects
             'tasks_range': None,
             'predict_all': True,
