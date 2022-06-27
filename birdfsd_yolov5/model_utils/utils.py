@@ -12,6 +12,7 @@ from typing import Optional, Union
 import numpy as np
 import ray
 import requests
+import sys
 from loguru import logger
 from minio.error import S3Error
 from requests.structures import CaseInsensitiveDict
@@ -30,9 +31,19 @@ def add_logger(current_file: str) -> str:
         str: The name of the log file.
 
     """
+    logger.remove()
     Path('logs').mkdir(exist_ok=True)
     ts = datetime.now().strftime('%m-%d-%Y_%H.%M.%S')
     logs_file = f'logs/{Path(current_file).stem}_{ts}.log'
+    logger.add(
+        sys.stderr,
+        format='{level.icon} <fg #3bd6c6>{time:HH:mm:ss}</fg #3bd6c6> | '
+        '<level>{level: <8}</level> | '
+        '<fg #f1fa8c>{function}</fg #f1fa8c>:'
+        '<fg #f1fa8c>{line}</fg #f1fa8c> - <lvl>{message}</lvl>',
+        level='DEBUG')
+    logger.level('WARNING', color='<yellow><bold>', icon='🚧')
+    logger.level('INFO', color='<bold>', icon='🚀')
     logger.add(logs_file)
     return logs_file
 
@@ -98,7 +109,7 @@ def requests_download(url: str, filename: str) -> None:
 def api_request(url: str,
                 method: str = 'get',
                 data: Optional[dict] = None,
-                return_text: bool = False) -> Union[dict, str]:
+                return_text: bool = False) -> Union[dict, list, str]:
     """Makes an API request to the given url with the given method and data.
 
     Args:
@@ -109,12 +120,13 @@ def api_request(url: str,
         return_text (bool): Return the response as literal string.
 
     Returns:
-        dict: The response from the API.
+        The response from the API.
 
     """
     headers = CaseInsensitiveDict()
     headers['Content-type'] = 'application/json'
     headers['Authorization'] = f'Token {os.environ["TOKEN"]}'
+    method = method.lower()
     if method == 'post':
         resp = requests.post(url, headers=headers, data=json.dumps(data))
     elif method == 'patch':
@@ -142,8 +154,8 @@ def get_project_ids_str(exclude_ids: Optional[str] = None) -> str:
     """
     projects = api_request(
         f'{os.environ["LS_HOST"]}/api/projects?page_size=1000')
-    project_ids = sorted([project['id']
-                          for project in projects['results']])  # noqa
+    projects_results: list = projects['results']
+    project_ids = sorted([project['id'] for project in projects_results])
     project_ids = [str(p) for p in project_ids]
     if exclude_ids:
         exclude_ids = list(exclude_ids.split(','))
